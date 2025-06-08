@@ -124,11 +124,12 @@ async def root():
 @app.post("/ask", response_model=ChatResponse)
 async def ask_question(request: QuestionRequest):
     """Main endpoint to ask questions to the RAG chatbot"""
+    global rag_chain_instance  # Move global declaration to the top
+
     try:
         if not rag_chain_instance:
             # Try to initialize if not already done
             try:
-                global rag_chain_instance
                 rag_chain_instance = get_rag_chain()
             except Exception as e:
                 raise HTTPException(
@@ -258,6 +259,8 @@ async def get_vector_store_info():
 @app.get("/ingest-data")
 async def trigger_data_ingestion():
     """Manually trigger data ingestion (for debugging)"""
+    global rag_chain_instance  # Add global declaration here too
+
     try:
         logger.info("Manual data ingestion triggered")
 
@@ -273,7 +276,6 @@ async def trigger_data_ingestion():
 
         if vector_store:
             # Reinitialize RAG chain
-            global rag_chain_instance
             rag_chain_instance = get_rag_chain()
 
             return {"status": "success", "message": "Data ingestion completed"}
@@ -295,9 +297,9 @@ if __name__ == "__main__":
     print("=" * 60)
 
     port = int(os.getenv("PORT", "8000"))
-    print(f"🌐 Server will be available at: http://0.0.0.0:{port}")
-    print(f"🏥 Health check: http://0.0.0.0:{port}/health")
-    print(f"📊 Vector store info: http://0.0.0.0:{port}/vector-store-info")
+    print(f" Server will be available at: http://0.0.0.0:{port}")
+    print(f" Health check: http://0.0.0.0:{port}/health")
+    print(f" Vector store info: http://0.0.0.0:{port}/vector-store-info")
     print("=" * 60)
 
     uvicorn.run(
