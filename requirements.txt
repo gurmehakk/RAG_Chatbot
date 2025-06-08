@@ -1,0 +1,32 @@
+# FastAPI and server
+fastapi~=0.115.9
+uvicorn~=0.34.3
+
+# LangChain - compatible versions
+langchain~=0.3.25
+langchain-core
+langchain-community
+langchain-openai
+
+# Vector store and embeddings
+chromadb
+sentence-transformers
+transformers
+huggingface-hub
+
+# Web scraping and PDF processing
+beautifulsoup4==4.12.2
+requests==2.31.0
+PyPDF2~=3.0.1
+python-docx
+
+# Utilities
+python-dotenv~=1.1.0
+python-multipart
+pydantic~=2.11.5
+numpy
+tiktoken
+
+
+# Let pip resolve tokenizers version automatically
+tokenizers
