@@ -1,0 +1,12 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        ls -la
+        docker build -t gcr.io/rag-chatbot-app-462310/ragbot .
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/rag-chatbot-app-462310/ragbot']
+images:
+  - 'gcr.io/rag-chatbot-app-462310/ragbot'

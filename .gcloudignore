@@ -1,16 +1,9 @@
-.git
-.gitignore
-README.md
-.env
-.venv
-__pycache__
+# Only exclude what we don't need for the build
+.git/
+__pycache__/
 *.pyc
-*.pyo
-*.pyd
-.pytest_cache
-.coverage
+.env
+venv/
+env/
+ENV/
 .DS_Store
-node_modules
-*.log
-Dockerfile
-.dockerignore

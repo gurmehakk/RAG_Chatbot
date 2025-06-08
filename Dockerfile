@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 # Copy installed packages from builder stage
-COPY --from=builder /root/.local /root/.local
+COPY --from=builder /root/.local /usr/local
 
 # Copy application code (use .dockerignore to exclude unnecessary files)
 COPY . .
@@ -45,8 +45,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser \
 # Switch to non-root user
 USER appuser
 
-# Set environment variables - CRITICAL: Add local bin to PATH
-ENV PATH=/root/.local/bin:$PATH
+# Set environment variables
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
