@@ -50,8 +50,7 @@ User Query → Document Retrieval → Context Augmentation → LLM Response Gene
 ### Supporting Technologies
 
 - **Python**: Core programming language
-- **FastAPI/Flask**: Web framework for API endpoints
-- **Streamlit**: (If applicable) User interface framework
+- **FastAPI**: Web framework for API endpoints
 - **Docker**: Containerization for consistent deployment
 
 ## 🔧 How It Works
