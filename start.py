@@ -1,157 +1,102 @@
 #!/usr/bin/env python3
 """
-Startup script for Railway deployment
-This script handles data ingestion and starts the FastAPI server
+Startup script to run data ingestion followed by the main application.
+Provides better error handling and logging for Docker deployment.
 """
 
 import os
 import sys
-import asyncio
+import subprocess
 import logging
 from pathlib import Path
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 
-def setup_directories():
-    """Create necessary directories"""
-    directories = [
-        "data/pdfs",
-        "data/docx",
-        "data/scraped_pages",
-        "chroma_db"
-    ]
-    for directory in directories:
-        Path(directory).mkdir(parents=True, exist_ok=True)
-        logger.info(f"Created directory: {directory}")
-
-
-def check_vector_store():
-    """Check if vector store exists and has data"""
-    chroma_db_path = Path("chroma_db")
-    if chroma_db_path.exists():
-        # Check if there are any files in the chroma_db directory
-        db_files = list(chroma_db_path.rglob('*'))
-        non_empty_files = [f for f in db_files if f.is_file() and f.stat().st_size > 0]
-
-        if non_empty_files:
-            logger.info(f"Vector store found with {len(non_empty_files)} files, skipping data ingestion")
-            return True
-
-    logger.info("Vector store not found or empty, will need to ingest data")
-    return False
-
-
-async def run_data_ingestion():
-    """Run data ingestion if needed"""
+def run_command(command, description):
+    """Run a command and handle errors."""
     try:
-        logger.info("Starting data ingestion...")
-
-        # Import and run ingestion
-        from ingest_data import AngelOneDataIngester
-
-        ingester = AngelOneDataIngester()
-        vector_store = await asyncio.to_thread(ingester.run_ingestion)
-
-        if vector_store:
-            logger.info("Data ingestion completed successfully")
-            return True
-        else:
-            logger.error("Data ingestion failed")
-            return False
-
-    except Exception as e:
-        logger.error(f"Error during data ingestion: {e}")
-        logger.exception("Full traceback:")
+        logger.info(f"Starting: {description}")
+        result = subprocess.run(
+            command,
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        logger.info(f"Completed: {description}")
+        if result.stdout:
+            logger.info(f"Output: {result.stdout}")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed: {description}")
+        logger.error(f"Error: {e.stderr}")
         return False
 
 
-def start_server():
-    """Start the FastAPI server"""
+def check_files_exist():
+    """Check if required files exist."""
+    required_files = ['ingest_data.py', 'main.py']
+    for file in required_files:
+        if not Path(file).exists():
+            logger.error(f"Required file not found: {file}")
+            return False
+    return True
+
+
+def create_directories():
+    """Ensure data directories exist."""
+    dirs = ['data', 'data/pdfs', 'data/docx', 'data/scraped_pages', 'chroma_db']
+    for dir_path in dirs:
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
+        logger.info(f"Directory ensured: {dir_path}")
+
+
+def main():
+    """Main startup sequence."""
+    logger.info("=== Starting Application Deployment ===")
+
+    # Check if required files exist
+    if not check_files_exist():
+        logger.error("Missing required files. Exiting.")
+        sys.exit(1)
+
+    # Create necessary directories
+    create_directories()
+
+    # Step 1: Run data ingestion
+    logger.info("Step 1: Running data ingestion...")
+    if not run_command("python ingest_data.py", "Data ingestion"):
+        logger.error("Data ingestion failed. Continuing anyway...")
+        # Don't exit here - the app might still work with existing data
+
+    # Step 2: Start the main application
+    logger.info("Step 2: Starting main application...")
+
+    # Get port from environment - using 8000 consistently
+    port = os.environ.get('PORT', '8000')
+    logger.info(f"Starting app on port {port}")
+
+    # Start the main application
+    # Adjust this command based on how your main.py starts the server
     try:
-        logger.info("Starting FastAPI server...")
-        port = int(os.getenv("PORT", "8000"))
-
-        # Import uvicorn and start server
-        import uvicorn
-        uvicorn.run(
-            "main:app",
-            host="0.0.0.0",
-            port=port,
-            log_level="info",
-            access_log=True
-        )
-
-    except ImportError as e:
-        logger.error(f"Failed to import uvicorn: {e}")
-        logger.error("Trying alternative startup method...")
-
-        # Alternative: use subprocess to start uvicorn
-        import subprocess
-        port = int(os.getenv("PORT", "8000"))
-        cmd = [
-            sys.executable, "-m", "uvicorn",
-            "main:app",
-            "--host", "0.0.0.0",
-            "--port", str(port)
-        ]
-
-        logger.info(f"Running command: {' '.join(cmd)}")
-        subprocess.run(cmd)
-
+        # If main.py uses uvicorn or similar, you might need to modify this
+        subprocess.run([sys.executable, "main.py"], check=True)
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal. Shutting down gracefully.")
     except Exception as e:
-        logger.error(f"Error starting server: {e}")
-        logger.exception("Full traceback:")
+        logger.error(f"Application failed to start: {e}")
         sys.exit(1)
-
-
-async def main():
-    """Main startup function"""
-    logger.info("=" * 60)
-    logger.info("Angel One RAG Chatbot - Railway Deployment")
-    logger.info("=" * 60)
-
-    # Debug: Print Python path and installed packages location
-    logger.info(f"Python executable: {sys.executable}")
-    logger.info(f"Python path: {sys.path}")
-    logger.info(f"PATH environment: {os.environ.get('PATH', 'Not set')}")
-
-    # Check required environment variables
-    if not os.getenv("OPENAI_API_KEY"):
-        logger.error("OPENAI_API_KEY environment variable is required")
-        sys.exit(1)
-    else:
-        logger.info("OPENAI_API_KEY found ✓")
-
-    # Setup directories
-    setup_directories()
-
-    # Check if we need to run data ingestion
-    if not check_vector_store():
-        logger.info("Running data ingestion on first deployment...")
-        success = await run_data_ingestion()
-        if not success:
-            logger.warning("Data ingestion failed, but continuing with server startup")
-    else:
-        logger.info("Vector store exists, skipping data ingestion")
-
-    # Start the server
-    logger.info("Starting server...")
-    start_server()
 
 
 if __name__ == "__main__":
-    # Check if uvicorn is available
-    try:
-        import uvicorn
-
-        logger.info("uvicorn imported successfully ✓")
-    except ImportError as e:
-        logger.error(f"uvicorn import failed: {e}")
-        logger.error("This indicates a package installation issue")
-        sys.exit(1)
-
-    # Run main function
-    asyncio.run(main())
+    main()

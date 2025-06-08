@@ -38,9 +38,12 @@ COPY . .
 RUN mkdir -p data/pdfs data/docx data/scraped_pages chroma_db \
     && chmod -R 755 data/ chroma_db/
 
-# Create non-root user for security (but keep as root for Railway compatibility)
+# Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser \
     && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Set environment variables - CRITICAL: Add local bin to PATH
 ENV PATH=/root/.local/bin:$PATH
@@ -48,12 +51,13 @@ ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
+# Expose port 8000 consistently
+ENV PORT=8000
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Use startup script instead of direct uvicorn command
+# Use startup script for better error handling and logging
 CMD ["python", "start.py"]
